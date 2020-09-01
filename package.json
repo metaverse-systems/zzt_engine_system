@@ -1,0 +1,22 @@
+{
+  "name": "@metaverse-systems/zzt_engine_system",
+  "version": "0.0.1",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm i; the-seed-libraries-build; the-seed-build",
+    "build-win64": "npm i; the-seed-libraries-build Win64; the-seed-build Win64"
+  },
+  "keywords": [],
+  "author": {
+    "email": "tim@metaverse.systems",
+    "name": "Tim Schwartz",
+    "url": "https://metaverse.systems",
+    "codeSigningKey": "metaverse.systems",
+    "codeSigningCert": "metaverse.systems"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@metaverse-systems/position_component": "^1.0.3"
+  }
+}
