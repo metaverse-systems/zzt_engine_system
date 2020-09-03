@@ -61,7 +61,6 @@ void zztBoard::rleExpand()
 void zztBoard::StatusElementDump()
 {
     uint8_t *ptr = this->data + this->rle_size + 0x35 + sizeof(zztBoardProperties);
-    // zztStatusElement *element = (zztStatusElement *)(this->data + this->rle_size + 0x35 + sizeof(zztBoardProperties));
     for(uint8_t i = 0; i <= this->board_properties.StatElementCount; i++)
     {
         zztStatusElement *element = (zztStatusElement *)ptr;
@@ -71,11 +70,10 @@ void zztBoard::StatusElementDump()
 //        std::cout << "StepX: " << static_cast<int>(element->StepX) << std::endl;
 //        std::cout << "StepY: " << static_cast<int>(element->StepY) << std::endl;
 //        std::cout << "Cycle: " << static_cast<int>(element->Cycle) << std::endl;
-//        std::cout << "Length: " << static_cast<int>(element->Length) << std::endl;
 
         if(element->Length > 0)
         {
-            new zztOOP(element->Length, Code);
+            new zztOOP(ptr);
             std::string temp;
             std::vector<std::string> lines;
             for(uint16_t counter = 0; counter < element->Length; counter++)
@@ -86,42 +84,30 @@ void zztBoard::StatusElementDump()
                     temp = "";
                 }
                 else temp += Code[counter];
-
-#if 0
-                switch(Code[counter])
-                {
-                    case '\r':
-                        break;
-                    default:
-                        std::cout << "Unknown character '" << Code[counter] << "'" << std::endl;
-                        break;
-                }
-#endif
             }
 
             for(const auto &line : lines) std::cout << line << std::endl;
         }
         ptr += sizeof(zztStatusElement);
         if(element->Length > 0) ptr += element->Length;
-//        else ptr += 8;
     }
 }
 
-zztOOP::zztOOP(int16_t length, char *ptr)
+zztOOP::zztOOP(uint8_t *ptr)
 {
-    this->length = length;
-    this->ptr = ptr;
+    this->element = (zztStatusElement *)ptr;
+    this->code = ptr + sizeof(zztStatusElement);
     this->Parse();
     std::cout << "Name: " << this->name << std::endl;
-    std::cout << "Length: " << this->length << std::endl;
+    std::cout << "Length: " << this->element->Length << std::endl;
 }
 
 void zztOOP::Parse()
 {
     std::string temp = "";
-    for(int16_t counter = 0; counter < this->length; counter++)
+    for(int16_t counter = 0; counter < this->element->Length; counter++)
     {
-        if(this->ptr[counter] == '\r')
+        if(this->code[counter] == '\r')
         {
             switch(temp[0])
             {
@@ -141,7 +127,7 @@ void zztOOP::Parse()
             }
             temp = "";
         }
-        else temp += this->ptr[counter];
+        else temp += this->code[counter];
     }
 
     for(const auto &label : this->labels)

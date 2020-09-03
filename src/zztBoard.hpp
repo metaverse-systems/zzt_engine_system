@@ -60,10 +60,10 @@ typedef struct
 class zztOOP
 {
   public:
-    zztOOP(int16_t length, char *ptr);
+    zztOOP(uint8_t *ptr);
   private:
-    int16_t length;
-    char *ptr = nullptr;
+    zztStatusElement *element = nullptr;
+    uint8_t *code = nullptr;
     std::string name;
     std::unordered_map<std::string, int16_t> labels;
     void Parse();
