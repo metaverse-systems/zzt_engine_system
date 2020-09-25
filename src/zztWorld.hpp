@@ -59,8 +59,8 @@ class zztWorld
     ~zztWorld();
     void HeaderDump();
     zztBoard *BoardGet(int16_t board);
+    uint8_t *data = nullptr;
   private:
     std::string filename;
-    uint8_t *data = nullptr;
     std::vector<std::string> flags;
 };

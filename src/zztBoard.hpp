@@ -5,6 +5,8 @@
 #include <vector>
 #include <unordered_map>
 
+class zztWorld;
+
 typedef struct
 {
     int16_t BoardSize;
@@ -60,23 +62,30 @@ typedef struct
 class zztOOP
 {
   public:
-    zztOOP(uint8_t *ptr);
+    zztOOP(zztWorld *world, uint8_t *ptr);
+    void Jump(std::string label);
   private:
+    zztWorld *world = nullptr;
     zztStatusElement *element = nullptr;
     uint8_t *code = nullptr;
     std::string name;
     std::unordered_map<std::string, int16_t> labels;
+    bool locked = false;
     void Parse();
+    bool Step();
+    bool Take(std::string item, int16_t qty);
+    void Give(std::string item, int16_t qty);
 };
 
 class zztBoard
 {
   public:
-    zztBoard(uint8_t *address);
+    zztBoard(zztWorld *world, int16_t board);
     int16_t SizeGet();
     void HeaderDump();
     void PropertiesDump();
     void StatusElementDump();
+    zztWorld *world;
   private:
     uint8_t *data = nullptr;
     uint16_t rle_size = 0;

@@ -99,23 +99,5 @@ void zztWorld::HeaderDump()
 
 zztBoard *zztWorld::BoardGet(int16_t board)
 {
-    int16_t counter = 0;
-    uint32_t address = 0x200; // Assuming ZZT
-    zztWorldHeader *header = (zztWorldHeader *)this->data;
-        
-    do
-    {
-        if(board == counter)
-        {
-            return new zztBoard(this->data + address);
-        }
-
-        int16_t BoardSize = *((int16_t *)(this->data + address));
-        address += BoardSize + 2;
-
-        counter++;
-    } while(counter < header->NumBoards);
-
-    throw std::runtime_error("Board " + std::to_string(board) + " not found.");
-    return nullptr;
+    return new zztBoard(this, board);
 }
