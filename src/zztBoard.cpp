@@ -3,29 +3,6 @@
 #include <iostream>
 #include <algorithm>
 
-
-const std::vector<std::string> explode(const std::string &s, const char &c)
-{
-    std::string buff{""};
-    std::vector<std::string> v;
-
-    for(auto n : s)
-    {
-        if(n != c) buff += n;
-        else
-        {
-            if(n == c && buff != "")
-            {
-                v.push_back(buff);
-                buff = ""; 
-            }
-        }
-    }
-    if(buff != "") v.push_back(buff);
-
-    return v;
-}
-
 zztBoard::zztBoard(zztWorld *world, int16_t board)
 {
     int16_t counter = 0;
@@ -52,6 +29,7 @@ zztBoard::zztBoard(zztWorld *world, int16_t board)
     this->header = (zztBoardHeader *)this->data;
     this->rleExpand();
     this->board_properties = *(zztBoardProperties *)(this->data + this->rle_size + 0x35);
+    this->StatusElementParse();
 }
 
 int16_t zztBoard::SizeGet()
@@ -103,180 +81,40 @@ void zztBoard::rleExpand()
     }
 }
 
-void zztBoard::StatusElementDump()
+void zztBoard::StatusElementParse()
 {
+    this->status_elements.resize(this->board_properties.StatElementCount + 1);
+    this->status_elements_code.resize(this->board_properties.StatElementCount + 1);
+
     uint8_t *ptr = this->data + this->rle_size + 0x35 + sizeof(zztBoardProperties);
     for(uint8_t i = 0; i <= this->board_properties.StatElementCount; i++)
     {
-        zztStatusElement *element = (zztStatusElement *)ptr;
-        char *Code = (char *)(ptr + sizeof(zztStatusElement));
-        std::cout << "LocationX: " << static_cast<unsigned int>(element->LocationX) << std::endl;
-        std::cout << "LocationY: " << static_cast<unsigned int>(element->LocationY) << std::endl;
-//        std::cout << "StepX: " << static_cast<int>(element->StepX) << std::endl;
-//        std::cout << "StepY: " << static_cast<int>(element->StepY) << std::endl;
-//        std::cout << "Cycle: " << static_cast<int>(element->Cycle) << std::endl;
-
-        if(element->Length > 0)
+        this->status_elements[i] = (zztStatusElement *)ptr;
+        if(this->status_elements[i]->Length > 0)
         {
-            new zztOOP(this->world, ptr);
-            std::string temp;
-            std::vector<std::string> lines;
-            for(uint16_t counter = 0; counter < element->Length; counter++)
-            {
-                if(Code[counter] == '\r')
-                {
-                    lines.push_back(temp);
-                    temp = "";
-                }
-                else temp += Code[counter];
-            }
-
-//            for(const auto &line : lines) std::cout << line << std::endl;
+            this->status_elements_code[i] = new zztOOP(this->world, this, i);
+            ptr += this->status_elements[i]->Length;
         }
+
         ptr += sizeof(zztStatusElement);
-        if(element->Length > 0) ptr += element->Length;
     }
 }
 
-zztOOP::zztOOP(zztWorld *world, uint8_t *ptr)
+void zztBoard::StatusElementDump(zztStatusElement *element)
 {
-    this->world = world;
-    this->element = (zztStatusElement *)ptr;
-    this->code = ptr + sizeof(zztStatusElement);
-    this->Parse();
-    std::cout << "Name: " << this->name << std::endl;
-    std::cout << "Length: " << this->element->Length << std::endl;
-    while(this->Step());
-    std::cout << "OOP script ended." << std::endl;
-    this->Jump(":bribe");
-}
-
-void zztOOP::Parse()
-{
-    std::string temp = "";
-    for(int16_t counter = 0; counter < this->element->Length; counter++)
-    {
-        if(this->code[counter] == '\r')
-        {
-            switch(temp[0])
-            {
-                case '@': // name
-                    this->name = temp;
-                    break;
-                case ':': // label
-                    this->labels[temp] = counter - temp.size();
-                    break;
-                default:
-                    break;
-            }
-            temp = "";
-        }
-        else temp += this->code[counter];
-    }
-}
-
-bool zztOOP::Step()
-{
-    std::string temp = "";
-    bool result = true;
-    while(this->element->CurrentInstruction < this->element->Length)
-    {
-        if(this->code[this->element->CurrentInstruction] == '\r')
-        {
-//            std::cout << "Processing " << temp << std::endl;
-            std::string command;
-            std::vector<std::string> tokens;
-            switch(temp[0])
-            {
-                case '#': // Command
-                    command = temp;
-                    std::transform(command.begin(), command.end(), command.begin(), ::tolower);
-                    tokens = explode(command, ' ');
-                    if(tokens[0] == "#end")
-                    {
-                        result = false;
-                    }
-
-                    if(tokens[0] == "#lock")
-                    {
-                        this->locked = true;
-                    }
-
-                    if(tokens[0] == "#unlock")
-                    {
-                        this->locked = false;
-                    }
-
-                    if(tokens[0] == "#restart")
-                    {
-                        this->element->CurrentInstruction = 0;
-                        return true;
-                    }
-
-                    if(tokens[0] == "#idle")
-                    {
-
-                    }
-
-                    if(tokens[0] == "#endgame")
-                    {
-                    }
-
-                    if(tokens[0] == "#die")
-                    {
-                    }
-
-                    if(tokens[0] == "#take")
-                    {
-                        if(!this->Take(tokens[1], std::stoi(tokens[2])))
-                        {
-                            if(tokens.size() == 4)
-                            {
-                                this->element->CurrentInstruction = this->labels[tokens[3]];
-                                return true;
-                            }
-                        }
-                    }
-                default:
-                    int16_t addr = this->element->CurrentInstruction - temp.size();
-                    std::cout << std::to_string(addr) << "| " << temp << std::endl;
-                    break;
-            }
-            this->element->CurrentInstruction++;
-            return result;
-        }
-        else temp += this->code[this->element->CurrentInstruction];
-        this->element->CurrentInstruction++;
-    }
-    result = false;
-    return result;
-}
-
-void zztOOP::Jump(std::string label)
-{
-    if(this->locked) return;
-
-    int16_t jmp = this->labels[label];
-    this->element->CurrentInstruction = jmp;
-}
-
-bool zztOOP::Take(std::string item, int16_t qty)
-{
-    zztWorldHeader *header = (zztWorldHeader *)this->world->data;
-    int16_t *value = nullptr;
-    if(item == "ammo") value = &header->PlayerAmmo;
-    if(item == "torches") value = &header->PlayerTorches;
-    if(item == "gems") value = &header->PlayerGems;
-    if(item == "health") value = &header->PlayerHealth;
-    if(item == "score") value = &header->PlayerScore;
-//    if(item == "time") value = &header->Player
-
-    if(value == nullptr) return false;
-    if(qty > *value) return false;
-    *value -= qty;
-    return true;
-}
-
-void zztOOP::Give(std::string item, int16_t qty)
-{
+    std::cout << "LocationX: " << static_cast<unsigned int>(element->LocationX) << std::endl;
+    std::cout << "LocationY: " << static_cast<unsigned int>(element->LocationY) << std::endl;
+    std::cout << "StepX: " << static_cast<int>(element->StepX) << std::endl;
+    std::cout << "StepY: " << static_cast<int>(element->StepY) << std::endl;
+    std::cout << "Cycle: " << static_cast<int>(element->Cycle) << std::endl;
+    std::cout << "P1: " << static_cast<unsigned int>(element->P1) << std::endl;
+    std::cout << "P2: " << static_cast<unsigned int>(element->P2) << std::endl;
+    std::cout << "P3: " << static_cast<unsigned int>(element->P3) << std::endl;
+    std::cout << "Follower: " << std::hex << static_cast<int>(element->Follower) << std::endl;
+    std::cout << "Leader: " << std::hex << static_cast<int>(element->Leader) << std::endl;
+    std::cout << "UnderID: " << static_cast<unsigned int>(element->UnderID) << std::endl;
+    std::cout << "UnderColor: " << static_cast<unsigned int>(element->UnderColor) << std::endl;
+    std::cout << "Pointer: " << static_cast<int>(element->Pointer) << std::endl;
+    std::cout << "CurrentInstruction: " << static_cast<int>(element->CurrentInstruction) << std::endl;
+//    std::cout << "Padding: " << element->Padding << std::endl;
 }

@@ -5,7 +5,8 @@
 #include <vector>
 #include <unordered_map>
 
-class zztWorld;
+#include "zztElements.hpp"
+#include "zztOOP.hpp"
 
 typedef struct
 {
@@ -39,43 +40,8 @@ typedef struct
     uint8_t Color;
 } __attribute__((__packed__)) zztRLE;
 
-typedef struct
-{
-    uint8_t LocationX;
-    uint8_t LocationY;
-    int16_t StepX;
-    int16_t StepY;
-    int16_t Cycle;
-    uint8_t P1;
-    uint8_t P2;
-    uint8_t P3;
-    int16_t Follower;
-    int16_t Leader;
-    uint8_t UnderID;
-    uint8_t UnderColor;
-    int32_t Pointer;
-    int16_t CurrentInstruction;
-    int16_t Length;
-    char Padding[8];
-} __attribute__((__packed__)) zztStatusElement;
-
-class zztOOP
-{
-  public:
-    zztOOP(zztWorld *world, uint8_t *ptr);
-    void Jump(std::string label);
-  private:
-    zztWorld *world = nullptr;
-    zztStatusElement *element = nullptr;
-    uint8_t *code = nullptr;
-    std::string name;
-    std::unordered_map<std::string, int16_t> labels;
-    bool locked = false;
-    void Parse();
-    bool Step();
-    bool Take(std::string item, int16_t qty);
-    void Give(std::string item, int16_t qty);
-};
+class zztWorld;
+class zztOOP;
 
 class zztBoard
 {
@@ -84,14 +50,18 @@ class zztBoard
     int16_t SizeGet();
     void HeaderDump();
     void PropertiesDump();
-    void StatusElementDump();
+    void StatusElementDump(zztStatusElement *);
     zztWorld *world;
+    std::vector<uint16_t> board_elements;
+    std::vector<zztStatusElement *> status_elements;
+    std::vector<zztOOP *> status_elements_code;
+    std::unordered_map<std::string, uint8_t> status_elements_names;
   private:
     uint8_t *data = nullptr;
     uint16_t rle_size = 0;
-    std::vector<uint16_t> board_elements;
     zztBoardHeader *header = nullptr;
     zztBoardProperties board_properties;
     std::string name;
     void rleExpand();
+    void StatusElementParse();
 };

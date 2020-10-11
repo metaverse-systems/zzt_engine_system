@@ -13,8 +13,10 @@ class zzt_engine_system : public ecs::System
     void Init();
   private:
     uint16_t cycle = 0;
+    uint16_t ms = 0;
     std::string filename;
     zztWorld *world = nullptr;
-    zztBoard *board = nullptr;
+    std::vector<zztBoard *> boards;
     uint8_t current_board = 0;
+    void BoardLoad(uint8_t board);
 };
