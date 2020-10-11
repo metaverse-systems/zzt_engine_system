@@ -29,6 +29,12 @@ zztWorld::~zztWorld()
     delete this->data;
 }
 
+zztWorldHeader zztWorld::HeaderGet()
+{
+    zztWorldHeader header = *(zztWorldHeader *)this->data;
+    return header;
+}
+
 void zztWorld::HeaderDump()
 {
     int16_t file_type = *((int16_t *)this->data);
