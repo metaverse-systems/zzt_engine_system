@@ -27,6 +27,28 @@ const std::vector<std::string> explode(const std::string &s, const char &c)
     return v;
 }
 
+void zztLabel::Add(int16_t addr)
+{
+    this->addresses.push_back(addr);
+}
+
+int16_t zztLabel::Get()
+{
+    if(this->index >= this->addresses.size()) return -1;
+    return this->addresses[this->index];
+}
+
+void zztLabel::Zap()
+{
+    this->index++;
+}
+
+void zztLabel::Restore()
+{
+    if(this->index == 0) return;
+    this->index--;
+}
+
 zztOOP::zztOOP(zztWorld *world, zztBoard *board, uint8_t el_number)
 {
     this->world = world;
@@ -66,10 +88,10 @@ void zztOOP::Parse()
             {
                 case '@': // name
                     this->name = temp;
-                    this->board->status_elements_names[this->name] = this->el_number;
+                    this->board->status_elements_names[this->name].push_back(this->el_number);
                     break;
                 case ':': // label
-                    this->labels[temp] = counter - temp.size();
+                    this->labels[temp].Add(counter - temp.size());
                     break;
                 case '#': // command
                     break;
@@ -93,14 +115,16 @@ bool zztOOP::Step(std::shared_ptr<zzt_status_el_component> z)
     {
         if(this->code[element->CurrentInstruction] == '\r')
         {
-//            std::cout << "Processing " << temp << std::endl;
             std::string command;
             std::vector<std::string> tokens;
             switch(temp[0])
             {
                 case '#': // Command
                     command = temp;
+
+                    // Convert to lowercase
                     std::transform(command.begin(), command.end(), command.begin(), ::tolower);
+
                     tokens = explode(command, ' ');
                     if(tokens[0] == "#end")
                     {
@@ -142,7 +166,9 @@ bool zztOOP::Step(std::shared_ptr<zzt_status_el_component> z)
                         {
                             if(tokens.size() == 4)
                             {
-                                element->CurrentInstruction = this->labels[tokens[3]];
+                                uint16_t next_label = this->labels[tokens[3]].Get();
+                                if(next_label == -1) return true;
+                                element->CurrentInstruction = next_label;
                                 return true;
                             }
                         }
@@ -172,7 +198,8 @@ void zztOOP::Jump(std::string label)
     auto element = this->element;
     if(this->locked) return;
 
-    int16_t jmp = this->labels[label];
+    int16_t jmp = this->labels[label].Get();
+    if(jmp == -1) return;
     element->CurrentInstruction = jmp;
 }
 
@@ -199,17 +226,9 @@ void zztOOP::Give(std::string item, int16_t qty)
 
 void zztOOP::Bind(std::string name)
 {
-    std::cout << "Bind()" << std::endl;
-    for(auto &[n, i] : this->board->status_elements_names)
-    {
-        std::cout << (unsigned)i << ": " << n << std::endl;
-    }
-
     auto element = this->element;
 
-    std::cout << "Binding to @" << name << std::endl;
-    auto index = this->board->status_elements_names["@" + name];
-    std::cout << "New code: " << std::endl;
+    auto index = this->board->status_elements_names["@" + name][0];
     this->board->status_elements_code[index]->Dump();
 
     element->CurrentInstruction = 0;

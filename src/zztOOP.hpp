@@ -11,6 +11,18 @@
 class zztWorld;
 class zztBoard;
 
+class zztLabel
+{
+  public:
+    void Add(int16_t addr);
+    int16_t Get();
+    void Zap();
+    void Restore();
+  private:
+    uint8_t index = 0;
+    std::vector<int16_t> addresses;
+};
+
 class zztOOP
 {
   public:
@@ -26,7 +38,7 @@ class zztOOP
     int16_t length;
     zztStatusElement *element = nullptr;
     uint8_t *code = nullptr;
-    std::unordered_map<std::string, int16_t> labels;
+    std::unordered_map<std::string, zztLabel> labels;
     bool locked = false;
     void Parse();
     bool Take(std::string item, int16_t qty);
