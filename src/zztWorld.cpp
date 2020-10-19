@@ -107,3 +107,9 @@ zztBoard *zztWorld::BoardGet(int16_t board)
 {
     return new zztBoard(this, board);
 }
+
+void zztWorld::BoardChange(int16_t board)
+{
+    zztWorldHeader *header = (zztWorldHeader *)this->data;
+    header->PlayerBoard = board;
+}
