@@ -6,4 +6,5 @@ libzzt_engine_system_la_LDFLAGS = -no-undefined
 libzzt_engine_system_la_LIBADD = ${LIBECS_LIBS} ${JSONCPP_LIBS} ${LIBTHE_SEED_LIBS} \
 	../node_modules/@metaverse-systems/text_component/src/libtext_component.la \
 	../node_modules/@metaverse-systems/position_component/src/libposition_component.la \
-	../node_modules/@metaverse-systems/zzt_status_el_component/src/libzzt_status_el_component.la
+	../node_modules/@metaverse-systems/zzt_status_el_component/src/libzzt_status_el_component.la \
+	../node_modules/@metaverse-systems/input_component/src/libinput_component.la
