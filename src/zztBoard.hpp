@@ -54,13 +54,13 @@ class zztBoard
     zztWorld *world;
     std::vector<uint16_t> board_elements;
     std::vector<zztStatusElement *> status_elements;
+    zztBoardProperties board_properties;
     std::vector<zztOOP *> status_elements_code;
-    std::unordered_map<std::string, uint8_t> status_elements_names;
+    std::unordered_map<std::string, std::vector<uint8_t>> status_elements_names;
   private:
     uint8_t *data = nullptr;
     uint16_t rle_size = 0;
     zztBoardHeader *header = nullptr;
-    zztBoardProperties board_properties;
     std::string name;
     void rleExpand();
     void StatusElementParse();
