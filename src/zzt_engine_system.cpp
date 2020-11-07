@@ -61,7 +61,6 @@ std::string zzt_engine_system::EntityGetByLocation(int16_t board_index, uint8_t 
 
 bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile char direction)
 {
-    auto worldHeader = this->world->HeaderGet();
     auto board = this->boards[board_index];
     auto element = board->status_elements[el_id];
 
