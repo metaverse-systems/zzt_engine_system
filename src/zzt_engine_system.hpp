@@ -21,5 +21,5 @@ class zzt_engine_system : public ecs::System
     void BoardLoadText(int16_t board);
     void BoardChange(int16_t board);
 
-    bool ElementMove(uint8_t el_id, char direction);
+    bool ElementMove(int16_t board_index, uint8_t el_id, char direction);
 };

@@ -42,25 +42,11 @@ void zzt_engine_system::Init()
     initZZTelements();
 }
 
-void zzt_engine_system::BoardChange(int16_t board)
-{
-    this->world->BoardChange(board);
-    auto Components = this->ComponentsGet();
-    for(auto &[e, tcomponent] : Components["text_component"])
-    {
-        this->Container->Entity(e)->ComponentDestroy("text_component");
-    }
-
-    std::cout << "Finished deleting text_components" << std::endl;
-}
-
-bool zzt_engine_system::ElementMove(uint8_t el_id, volatile char direction)
+bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile char direction)
 {
     auto worldHeader = this->world->HeaderGet();
-    auto board = this->boards[worldHeader.PlayerBoard];
+    auto board = this->boards[board_index];
     auto element = board->status_elements[el_id];
-
-    std::cout << "Moving on board: " << (unsigned)worldHeader.PlayerBoard << std::endl;
 
     std::string entity;
 
@@ -69,6 +55,7 @@ bool zzt_engine_system::ElementMove(uint8_t el_id, volatile char direction)
     {
         auto z = std::dynamic_pointer_cast<zzt_status_el_component>(zcomponent);
         if(z->id != el_id) continue;
+        if(z->board != board_index) continue;
 
         /* Looks pretty close to ZZT's speed */
         if(z->last_move > (this->cycle - 1)) return false;
@@ -85,7 +72,11 @@ bool zzt_engine_system::ElementMove(uint8_t el_id, volatile char direction)
         case 'W':
             if(pos->x == 0)
             {
-                this->BoardChange(board->board_properties.ExitWest);
+                if(board->board_properties.ExitWest)
+                {
+                    this->BoardChange(board->board_properties.ExitWest);
+                    return true;
+                }
                 return false;
             }
             pos->x--;
@@ -94,26 +85,46 @@ bool zzt_engine_system::ElementMove(uint8_t el_id, volatile char direction)
         case 'E':
             if(pos->x == 59)
             {
-                this->BoardChange(board->board_properties.ExitEast);
+                if(board->board_properties.ExitEast)
+                {
+                    this->BoardChange(board->board_properties.ExitEast);
+                    return true;
+                }
                 return false;
             }
             pos->x++;
             element->LocationX++;
             break;
         case 'N':
-            if(pos->y == 0) return false;
+            if(pos->y == 0)
+            {
+                if(board->board_properties.ExitNorth)
+                {
+                    this->BoardChange(board->board_properties.ExitNorth);
+                    return true;
+                }
+                return false;
+            }
             pos->y--;
             element->LocationY--;
             break;
         case 'S':
-            if(pos->y == 24) return false;
+            if(pos->y == 24)
+            {
+                if(board->board_properties.ExitSouth)
+                {
+                    this->BoardChange(board->board_properties.ExitSouth);
+                    return true;
+                }
+                return false;
+            }
             pos->y++;
             element->LocationY++;
             break;
         default:
             break;
     }
-    return false;
+    return true;
 }
 
 void zzt_engine_system::Update()
@@ -142,6 +153,7 @@ void zzt_engine_system::Update()
     if(this->boards[worldHeader.PlayerBoard] == nullptr)
     {
         this->BoardLoad(worldHeader.PlayerBoard);
+        this->BoardLoadText(worldHeader.PlayerBoard);
         return;
     }
 
@@ -151,7 +163,6 @@ void zzt_engine_system::Update()
 
     for(auto &[entity, icomponent] : Components["input_component"])
     {
-        auto breakout = false;
         auto i = std::dynamic_pointer_cast<input_component>(icomponent);
 
         if(i->event == "key_down")
@@ -163,17 +174,16 @@ void zzt_engine_system::Update()
                     ECS->Shutdown();
                     break;
                 case KEY_LEFT:
-                    this->ElementMove(0, 'W');
-                    breakout = true;
+                    this->ElementMove(worldHeader.PlayerBoard, 0, 'W');
                     break;
                 case KEY_RIGHT:
-                    this->ElementMove(0, 'E');
+                    this->ElementMove(worldHeader.PlayerBoard, 0, 'E');
                     break;
                 case KEY_UP:
-                    this->ElementMove(0, 'N');
+                    this->ElementMove(worldHeader.PlayerBoard, 0, 'N');
                     break;
                 case KEY_DOWN:
-                    this->ElementMove(0, 'S');
+                    this->ElementMove(worldHeader.PlayerBoard, 0, 'S');
                     break;
                 default:
                     std::cout << "Unhandled key: " << std::endl;
@@ -183,15 +193,18 @@ void zzt_engine_system::Update()
         }
 
         this->Container->Entity(entity)->destroy();
-        if(breakout) break;
     }
 
     for(auto &[entity, zcomponent] : Components["zzt_status_el_component"])
     {
         auto z = std::dynamic_pointer_cast<zzt_status_el_component>(zcomponent);
+        if(z->board != worldHeader.PlayerBoard) continue;
         auto element = board->status_elements[z->id];
 
-        if(element->Cycle) if((this->cycle % element->Cycle) != 0) continue;
+        if(element->Cycle)
+        {
+            if((this->cycle % element->Cycle) != 0) continue;
+        }
 
         auto code = board->status_elements_code[z->id];
         if(code == nullptr) continue;
@@ -199,8 +212,50 @@ void zzt_engine_system::Update()
     }
 }
 
+void zzt_engine_system::BoardChange(int16_t board)
+{
+    this->world->BoardChange(board);
+    auto Components = this->ComponentsGet();
+    for(auto &[e, tcomponent] : Components["text_component"])
+    {
+        this->Container->Entity(e)->ComponentDestroy("text_component");
+    }
+
+    this->BoardLoadText(board);
+}
+
 void zzt_engine_system::BoardLoadText(int16_t index)
 {
+    auto Components = this->ComponentsGet();
+    for(auto &[entity, pcomponent] : Components["position_component"])
+    {
+        auto pos = std::dynamic_pointer_cast<position_component>(pcomponent);
+        if(pos->z != index) continue;
+
+        uint16_t el_index = (pos->y * 60) + pos->x;
+        auto element = this->boards[index]->board_elements[el_index];
+
+        auto e = this->Container->Entity(entity);
+        auto tcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/text_component"));
+        auto t = std::dynamic_pointer_cast<text_component>(tcomponent);
+
+        auto fg_index = zztColors[(element >> 8) & 0xF];
+        auto fg = zztPalette[fg_index];
+        t->f_r = fg.r;
+        t->f_g = fg.g;
+        t->f_b = fg.b;
+
+        auto bg_index = zztColors[(element >> 12) & 0x8];
+        auto bg = zztPalette[bg_index];
+        t->b_r = bg.r;
+        t->b_g = bg.g;
+        t->b_b = bg.b;
+        t->c = zztElements[element & 0xFF];
+        if(t->c == 0)
+        {
+            std::cout << "No element at index: " << (unsigned)(element & 0xFF) << std::endl;
+        }
+    }
 }
 
 void zzt_engine_system::BoardLoad(int16_t index)
@@ -230,33 +285,12 @@ void zzt_engine_system::BoardLoad(int16_t index)
         }
 
         auto e = this->Container->Entity();
-
         auto pcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/position_component"));
-        auto tcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/text_component"));
-
         auto p = std::dynamic_pointer_cast<position_component>(pcomponent);
-        auto t = std::dynamic_pointer_cast<text_component>(tcomponent);
 
         p->x = col;
         p->y = row;
         p->z = index;
-
-        auto fg_index = zztColors[(element >> 8) & 0xF];
-        auto fg = zztPalette[fg_index];
-        t->f_r = fg.r;
-        t->f_g = fg.g;
-        t->f_b = fg.b;
-
-        auto bg_index = zztColors[(element >> 12) & 0x8];
-        auto bg = zztPalette[bg_index];
-        t->b_r = bg.r;
-        t->b_g = bg.g;
-        t->b_b = bg.b;
-        t->c = zztElements[element & 0xFF];
-        if(t->c == 0)
-        {
-            std::cout << "No element at index: " << (unsigned)(element & 0xFF) << std::endl;
-        }
 
         col++;
         if(col > 59)
@@ -281,6 +315,7 @@ void zzt_engine_system::BoardLoad(int16_t index)
             auto zcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/zzt_status_el_component"));
             auto z = std::dynamic_pointer_cast<zzt_status_el_component>(zcomponent);
             z->id = i;
+            z->board = index;
         }
     }
 }
