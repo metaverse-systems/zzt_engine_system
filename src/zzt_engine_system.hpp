@@ -22,4 +22,5 @@ class zzt_engine_system : public ecs::System
     void BoardChange(int16_t board);
 
     bool ElementMove(int16_t board_index, uint8_t el_id, char direction);
+    std::string EntityGetByLocation(int16_t board_index, uint8_t x, uint8_t y);
 };

@@ -42,6 +42,23 @@ void zzt_engine_system::Init()
     initZZTelements();
 }
 
+std::string zzt_engine_system::EntityGetByLocation(int16_t board_index, uint8_t x, uint8_t y)
+{
+    auto Components = this->ComponentsGet();
+    for(auto &[entity, pcomponent] : Components["position_component"])
+    {
+        auto pos = std::dynamic_pointer_cast<position_component>(pcomponent);
+
+        if(pos->z != board_index) continue;
+        if(pos->y != y) continue;
+        if(pos->x != x) continue;
+
+        return entity;
+    }
+
+    return std::string("");
+}
+
 bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile char direction)
 {
     auto worldHeader = this->world->HeaderGet();
