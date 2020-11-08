@@ -20,6 +20,7 @@
     "@metaverse-systems/input_component": "^1.0.2",
     "@metaverse-systems/position_component": "file:../position_component",
     "@metaverse-systems/text_component": "file:../text_component",
-    "@metaverse-systems/zzt_status_el_component": "file:../zzt_status_el_component"
+    "@metaverse-systems/zzt_status_el_component": "file:../zzt_status_el_component",
+    "@metaverse-systems/visible_component": "file:../visible_component"
   }
 }

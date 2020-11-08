@@ -18,7 +18,7 @@ class zzt_engine_system : public ecs::System
     zztWorld *world = nullptr;
     std::vector<zztBoard *> boards;
     void BoardLoad(int16_t board);
-    void BoardLoadText(int16_t board);
+    void BoardMakeVisible(int16_t board);
     void BoardChange(int16_t board);
 
     bool ElementMove(int16_t board_index, uint8_t el_id, char direction);

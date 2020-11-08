@@ -7,6 +7,7 @@
 #include "../node_modules/@metaverse-systems/text_component/src/text_component.hpp"
 #include "../node_modules/@metaverse-systems/zzt_status_el_component/src/zzt_status_el_component.hpp"
 #include "../node_modules/@metaverse-systems/input_component/src/input_component.hpp"
+#include "../node_modules/@metaverse-systems/visible_component/src/visible_component.hpp"
 #include <iostream>
 
 constexpr int32_t KEY_LEFT = 0x40000050;
@@ -38,6 +39,7 @@ void zzt_engine_system::Init()
     this->ComponentRequest("text_component");
     this->ComponentRequest("zzt_status_el_component");
     this->ComponentRequest("input_component");
+    this->ComponentRequest("visible_component");
     initZZTpalette();
     initZZTelements();
 }
@@ -83,6 +85,8 @@ bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile
     auto pcomponent = Components["position_component"][entity];
     auto pos = std::dynamic_pointer_cast<position_component>(pcomponent);
 
+    std::string collided_entity;
+
     switch(direction)
     {
         case 'W':
@@ -95,6 +99,16 @@ bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile
                 }
                 return false;
             }
+
+            collided_entity = this->EntityGetByLocation(board_index, (pos->x - 1), pos->y);
+            if(collided_entity.size() != 0)
+            {
+                auto tcomponent = Components["text_component"][collided_entity];
+                auto text = std::dynamic_pointer_cast<text_component>(tcomponent);
+                std::cout << "Collided with " << std::dec << (unsigned)text->c << std::endl;
+                return false;
+            }
+
             pos->x--;
             element->LocationX--;
             break;
@@ -108,6 +122,16 @@ bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile
                 }
                 return false;
             }
+
+            collided_entity = this->EntityGetByLocation(board_index, (pos->x + 1), pos->y);
+            if(collided_entity.size() != 0)
+            {
+                auto tcomponent = Components["text_component"][collided_entity];
+                auto text = std::dynamic_pointer_cast<text_component>(tcomponent);
+                std::cout << "Collided with " << std::dec << (unsigned)text->c << std::endl;
+                return false;
+            }
+
             pos->x++;
             element->LocationX++;
             break;
@@ -121,6 +145,16 @@ bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile
                 }
                 return false;
             }
+
+            collided_entity = this->EntityGetByLocation(board_index, pos->x, (pos->y - 1));
+            if(collided_entity.size() != 0)
+            {
+                auto tcomponent = Components["text_component"][collided_entity];
+                auto text = std::dynamic_pointer_cast<text_component>(tcomponent);
+                std::cout << "Collided with " << std::dec << (unsigned)text->c << std::endl;
+                return false;
+            }
+
             pos->y--;
             element->LocationY--;
             break;
@@ -134,6 +168,16 @@ bool zzt_engine_system::ElementMove(int16_t board_index, uint8_t el_id, volatile
                 }
                 return false;
             }
+
+            collided_entity = this->EntityGetByLocation(board_index, pos->x, (pos->y + 1));
+            if(collided_entity.size() != 0)
+            {
+                auto tcomponent = Components["text_component"][collided_entity];
+                auto text = std::dynamic_pointer_cast<text_component>(tcomponent);
+                std::cout << "Collided with " << std::dec << (unsigned)text->c << std::endl;
+                return false;
+            }
+
             pos->y++;
             element->LocationY++;
             break;
@@ -169,7 +213,7 @@ void zzt_engine_system::Update()
     if(this->boards[worldHeader.PlayerBoard] == nullptr)
     {
         this->BoardLoad(worldHeader.PlayerBoard);
-        this->BoardLoadText(worldHeader.PlayerBoard);
+        this->BoardMakeVisible(worldHeader.PlayerBoard);
         return;
     }
 
@@ -232,15 +276,15 @@ void zzt_engine_system::BoardChange(int16_t board)
 {
     this->world->BoardChange(board);
     auto Components = this->ComponentsGet();
-    for(auto &[e, tcomponent] : Components["text_component"])
+    for(auto &[e, tcomponent] : Components["visible_component"])
     {
-        this->Container->Entity(e)->ComponentDestroy("text_component");
+        this->Container->Entity(e)->ComponentDestroy("visible_component");
     }
 
-    this->BoardLoadText(board);
+    this->BoardMakeVisible(board);
 }
 
-void zzt_engine_system::BoardLoadText(int16_t index)
+void zzt_engine_system::BoardMakeVisible(int16_t index)
 {
     auto Components = this->ComponentsGet();
     for(auto &[entity, pcomponent] : Components["position_component"])
@@ -252,25 +296,7 @@ void zzt_engine_system::BoardLoadText(int16_t index)
         auto element = this->boards[index]->board_elements[el_index];
 
         auto e = this->Container->Entity(entity);
-        auto tcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/text_component"));
-        auto t = std::dynamic_pointer_cast<text_component>(tcomponent);
-
-        auto fg_index = zztColors[(element >> 8) & 0xF];
-        auto fg = zztPalette[fg_index];
-        t->f_r = fg.r;
-        t->f_g = fg.g;
-        t->f_b = fg.b;
-
-        auto bg_index = zztColors[(element >> 12) & 0x8];
-        auto bg = zztPalette[bg_index];
-        t->b_r = bg.r;
-        t->b_g = bg.g;
-        t->b_b = bg.b;
-        t->c = zztElements[element & 0xFF];
-        if(t->c == 0)
-        {
-            std::cout << "No element at index: " << (unsigned)(element & 0xFF) << std::endl;
-        }
+        e->Component(ComponentLoader::Create("@metaverse-systems/visible_component"));
     }
 }
 
@@ -307,6 +333,22 @@ void zzt_engine_system::BoardLoad(int16_t index)
         p->x = col;
         p->y = row;
         p->z = index;
+
+        auto tcomponent = e->Component(ComponentLoader::Create("@metaverse-systems/text_component"));
+        auto t = std::dynamic_pointer_cast<text_component>(tcomponent);
+
+        auto fg_index = zztColors[(element >> 8) & 0xF];
+        auto fg = zztPalette[fg_index];
+        t->f_r = fg.r;
+        t->f_g = fg.g;
+        t->f_b = fg.b;
+
+        auto bg_index = zztColors[(element >> 12) & 0x8];
+        auto bg = zztPalette[bg_index];
+        t->b_r = bg.r;
+        t->b_g = bg.g;
+        t->b_b = bg.b;
+        t->c = zztElements[element & 0xFF];
 
         col++;
         if(col > 59)
